@@ -14,22 +14,23 @@ import logging
 
 logging.basicConfig(level=logging.INFO)
 
+url =""
+email = ""
+password = ""
 
 # Define a state for the bot
 
 TOKEN = '5612271701:AAG1wFM9vnGRBvGnHMXxctaPECVNHBU2cWM'
-URL = 'https://9850-79-139-245-121.ngrok.io'
 local_URL = "http://localhost:8000"
 
 storage = MemoryStorage()
 bot = Bot(token=TOKEN)
 dp = Dispatcher(bot, storage=storage)
 
-email = ""
-password = ""
 
 
 class CredentialsForm(StatesGroup):
+    url = State()
     email = State()
     password = State()
 
@@ -46,8 +47,18 @@ async def cmd_start(message: types.Message):
 
 @dp.message_handler(commands='credentials')
 async def cmd_credentials(message: types.Message):
-    await CredentialsForm.email.set()
-    await bot.send_message(message.from_user.id, "Введите email для hookah.work")
+    await CredentialsForm.url.set()
+    await bot.send_message(message.from_user.id, "Введите url для hookah.work")
+
+
+@dp.message_handler(state=CredentialsForm.url)
+async def process_url(message: types.Message, state: FSMContext):
+
+    await CredentialsForm.next()
+    await message.answer("Введите email для hookah.work")
+    async with state.proxy() as data:
+        url = message.text.strip()
+        data['url'] = message.text
 
 
 @dp.message_handler(state=CredentialsForm.email)
@@ -57,14 +68,22 @@ async def process_email(message: types.Message, state: FSMContext):
     await message.answer("Введите пароль для hookah.work")
     async with state.proxy() as data:
         data['email'] = message.text
+        global email
+        email = message.text.strip()
 
 
 @dp.message_handler(state=CredentialsForm.password)
 async def process_password(message: types.Message, state: FSMContext):
     async with state.proxy() as data:
         data['password'] = message.text
+    
+    global email
+    global password
+    global url
+    url = data.get('url')
     email = data.get('email')
     password = data.get('password')
+
     await message.answer(
         text(f"**Ваш email:** {email}\n**Ваш пароль:** {password}"),
         reply=False,
@@ -78,20 +97,6 @@ async def process_password(message: types.Message, state: FSMContext):
     keyboard.add(btn_continue, btn_fix)
     await message.answer("Теперь выберите одну из команд", reply_markup=keyboard)
     await state.finish()
-
-# @dp.message_handler(state=CredentialsForm.email)
-# async def process_email(message: types.Message, state: FSMContext):
-#     email = message.text
-#     await bot.send_message(message.from_user.id, "Enter your password")
-#     await CredentialsForm.password.set()
-#     await state.update_data(email=email)
-
-# @dp.message_handler(state=CredentialsForm.password)
-# async def process_password(message: types.Message, state: FSMContext):
-#     password = message.text
-#     email = await state.get_data()
-#     await bot.send_message(message.from_user.id, f"Your email: {email} Your password: {password}")
-#     await state.finish()
 
 
 @dp.callback_query_handler(lambda c: c.data == "continue")
@@ -175,8 +180,7 @@ async def callback_update_sales(callback_query: types.CallbackQuery):
     )
 
     keyboard.add(btn_back)
-
-    await update_data(email, password)
+    await update_data(url, email, password)
 
     await bot.edit_message_text(
         chat_id=callback_query.message.chat.id,
@@ -212,7 +216,8 @@ async def callback_sales_today(callback_query: types.CallbackQuery):
         date = item[5]
 
         formatted_item = f"*Товар:* {name},\n*Цена:* {price},\n*Кол-во:* {quantity},\n*Метод оплаты:* {payment_method},\n*Клиент:* {customer},\n*Дата:* {date}"
-        formatted_data.append(formatted_item)
+        if len(formatted_data) < 6:  
+            formatted_data.append(formatted_item)
 
         if len(data) == 0:
             reply_string = "Пусто!"
@@ -221,15 +226,12 @@ async def callback_sales_today(callback_query: types.CallbackQuery):
             reply_string = "*Продажи за месяц:*\n" + \
                 '\n\n'.join(formatted_data)
 
-   
     response = requests.get("http://localhost:8000/download/sales.png")
 
     photo = BytesIO(response.content)
     photo.name = 'sales_last_month.xlsx'
 
     await bot.send_photo(chat_id=callback_query.message.chat.id, photo=photo, caption=reply_string, reply_markup=keyboard, parse_mode="Markdown")
-
-    
 
 
 @dp.callback_query_handler(lambda c: c.data == "sales_last_month")
@@ -253,8 +255,10 @@ async def callback_sales_last_month(callback_query: types.CallbackQuery):
         date = item[5]
 
         formatted_item = f"*Товар:* {name},\n*Цена:* {price},\n*Кол-во:* {quantity},\n*Метод оплаты:* {payment_method},\n*Клиент:* {customer},\n*Дата:* {date}"
-        formatted_data.append(formatted_item)
+        if len(formatted_data) < 6: 
+            formatted_data.append(formatted_item)
 
+        formatted_data.reverse()
         if len(formatted_data) != 0:
             reply_string = "*Продажи за месяц:*\n" + \
                 '\n\n'.join(formatted_data)
@@ -268,7 +272,6 @@ async def callback_sales_last_month(callback_query: types.CallbackQuery):
     photo.name = 'sales_last_month.xlsx'
 
     await bot.send_photo(chat_id=callback_query.message.chat.id, photo=photo, caption=reply_string, reply_markup=keyboard, parse_mode="Markdown")
-   
 
 
 class SalesForm(StatesGroup):
@@ -318,6 +321,7 @@ async def process_to_date(message: types.Message, state: FSMContext):
 
         data = fetch_sales_range(from_date, to_date)
         formatted_data = []
+        reply_string = ""
 
         for item in data:
             name = item[0]
@@ -328,7 +332,8 @@ async def process_to_date(message: types.Message, state: FSMContext):
             date = item[5]
 
             formatted_item = f"*Товар:* {name},\n*Цена:* {price},\n*Кол-во:* {quantity},\n*Метод оплаты:* {payment_method},\n*Клиент:* {customer},\n*Дата:* {date}"
-            formatted_data.append(formatted_item)
+            if len(formatted_data) < 6:
+                formatted_data.append(formatted_item)
 
             if len(formatted_data) != 0:
                 reply_string = "*Продажи за выбранный период:*\n" + \
@@ -364,15 +369,17 @@ async def callback_excel(callback_query: types.CallbackQuery):
 
     file = BytesIO(response.content)
     file.name = 'sales.xlsx'
-    
+
     await bot.send_message(callback_query.message.chat.id, "Ваш файл:")
     await bot.send_document(callback_query.message.chat.id, document=file)
 
 
-async def update_data(email, password):
+async def update_data(url, email, password):
     url = 'http://localhost:8000/update'
+    email = 'aleksandrdonskov@gmail.com'
+    password = 'hpkorolev2020'
     headers = {'Content-Type': 'application/json'}
-    data = {'email': 'lab3.pobd@yandex.ru', 'password': 'bdpasswordbd'}
+    data = {'url': url, 'email': email, 'password': password}
 
     response = requests.get(url, headers=headers, json=data)
 
