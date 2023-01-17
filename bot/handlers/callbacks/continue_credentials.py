@@ -8,7 +8,7 @@ async def callback_continue(callback_query: types.CallbackQuery):
         text="Получить данные о продажах", callback_data="sales")
     btn_back = types.InlineKeyboardMarkup(
         text="<< Вернуться назад", callback_data="back")
-    keyboard.add(btn_sales, btn_back)
+    keyboard.add(btn_back, btn_sales)
 
     await callback_query.message.edit_text(
         text="Теперь выберете следующую команду",

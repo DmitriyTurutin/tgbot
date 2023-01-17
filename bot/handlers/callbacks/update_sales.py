@@ -7,7 +7,7 @@ from entities.Credentials import Credentials
 async def callback_update_sales(callback_query: types.CallbackQuery):
     keyboard = types.InlineKeyboardMarkup()
     btn_back = types.InlineKeyboardButton(
-        text="Вернуться обратно", callback_data="sales"
+        text="<< Вернуться обратно", callback_data="sales"
     )
 
     keyboard.add(btn_back)
