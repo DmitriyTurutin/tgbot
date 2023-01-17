@@ -6,6 +6,7 @@ from aiogram.utils import executor
 from aiogram.contrib.fsm_storage.memory import MemoryStorage
 from aiogram.utils.markdown import text
 import requests
+from utils.api_requests import *
 import re
 from datetime import datetime
 from io import BytesIO
@@ -29,51 +30,51 @@ dp = Dispatcher(bot, storage=storage)
 
 
 
-class CredentialsForm(StatesGroup):
+class credentialsform(StatesGroup):
     url = State()
     email = State()
     password = State()
 
 
 @dp.message_handler(commands='start')
-async def cmd_start(message: types.Message):
+async def cmd_start(message: types.message):
     await message.answer(
-        text("Привет! Этот бот создан для получения данных с сайта hookah crm\n\n *Доступные команды:*\n",
+        text("привет! этот бот создан для получения данных с сайта hookah crm\n\n *доступные команды:*\n",
              "/credentials — введите данные для входа в hookah.work\n",
              "/help — справка *(информация о боте)*"),
         reply=False,
-        parse_mode="Markdown")
+        parse_mode="markdown")
 
 
 @dp.message_handler(commands='credentials')
-async def cmd_credentials(message: types.Message):
-    await CredentialsForm.url.set()
-    await bot.send_message(message.from_user.id, "Введите url для hookah.work")
+async def cmd_credentials(message: types.message):
+    await credentialsform.url.set()
+    await bot.send_message(message.from_user.id, "введите url для hookah.work")
 
 
-@dp.message_handler(state=CredentialsForm.url)
-async def process_url(message: types.Message, state: FSMContext):
+@dp.message_handler(state=credentialsform.url)
+async def process_url(message: types.message, state: FSMContext):
 
-    await CredentialsForm.next()
-    await message.answer("Введите email для hookah.work")
+    await credentialsform.next()
+    await message.answer("введите email для hookah.work")
     async with state.proxy() as data:
         url = message.text.strip()
         data['url'] = message.text
 
 
-@dp.message_handler(state=CredentialsForm.email)
-async def process_email(message: types.Message, state: FSMContext):
+@dp.message_handler(state=credentialsform.email)
+async def process_email(message: types.message, state: FSMContext):
 
-    await CredentialsForm.next()
-    await message.answer("Введите пароль для hookah.work")
+    await credentialsform.next()
+    await message.answer("введите пароль для hookah.work")
     async with state.proxy() as data:
         data['email'] = message.text
         global email
         email = message.text.strip()
 
 
-@dp.message_handler(state=CredentialsForm.password)
-async def process_password(message: types.Message, state: FSMContext):
+@dp.message_handler(state=credentialsform.password)
+async def process_password(message: types.message, state: FSMContext):
     async with state.proxy() as data:
         data['password'] = message.text
     
@@ -85,34 +86,34 @@ async def process_password(message: types.Message, state: FSMContext):
     password = data.get('password')
 
     await message.answer(
-        text(f"**Ваш email:** {email}\n**Ваш пароль:** {password}"),
+        text(f"**ваш email:** {email}\n**ваш пароль:** {password}"),
         reply=False,
-        parse_mode="Markdown"
+        parse_mode="markdown"
     )
     keyboard = types.InlineKeyboardMarkup()
     btn_continue = types.InlineKeyboardButton(
-        text="Продолжить", callback_data="continue")
+        text="продолжить", callback_data="continue")
     btn_fix = types.InlineKeyboardButton(
-        text="Исправить данные", callback_data="fix")
+        text="исправить данные", callback_data="fix")
     keyboard.add(btn_continue, btn_fix)
-    await message.answer("Теперь выберите одну из команд", reply_markup=keyboard)
+    await message.answer("теперь выберите одну из команд", reply_markup=keyboard)
     await state.finish()
 
 
 @dp.callback_query_handler(lambda c: c.data == "continue")
 async def callback_continue(callback_query: types.CallbackQuery):
-    # Create the inline keyboard with the "Go back << and "Get Sales Data buttons""
+    # create the inline keyboard with the "go back << and "get sales data buttons""
     keyboard = types.InlineKeyboardMarkup()
     btn_sales = types.InlineKeyboardButton(
-        text="Получить данные о продажах", callback_data="sales")
+        text="получить данные о продажах", callback_data="sales")
     btn_back = types.InlineKeyboardMarkup(
-        text="Вернуться назад", callback_data="back")
+        text="вернуться назад", callback_data="back")
     keyboard.add(btn_sales, btn_back)
 
     await bot.edit_message_text(
         chat_id=callback_query.message.chat.id,
         message_id=callback_query.message.message_id,
-        text="Теперь выберете следующую команду",
+        text="теперь выберете следующую команду",
         reply_markup=keyboard
     )
 
@@ -122,10 +123,10 @@ async def callback_back(callback_query: types.CallbackQuery):
     await bot.edit_message_text(
         chat_id=callback_query.message.chat.id,
         message_id=callback_query.message.message_id,
-        text="Выберете следующую команду",
+        text="выберете следующую команду",
         reply_markup=None
     )
-    # Go back to the previous command
+    # go back to the previous command
     await cmd_credentials(callback_query.message)
 
 
@@ -386,15 +387,6 @@ async def update_data(url, email, password):
     print(response.status_code)
     print(response.json())
 
-
-def fetch_sales_today():
-    url = 'http://localhost:8000/sales/today'
-    headers = {'Content-Type': 'application/json'}
-
-    response = requests.get(url, headers=headers)
-
-    print(response.status_code)
-    return response.json()
 
 
 def fetch_sales_last_month():
