@@ -34,7 +34,7 @@ async def fetch_sales_last_month():
     async with aiohttp.ClientSession() as session:
         async with session.get(url, headers=headers) as resp:
             logging.info(f'Response status fetch_sales_today: {resp.status}')
-            return resp.json()
+            return await resp.json()
 
 
 async def fetch_sales_range(from_date: str, to_date: str):

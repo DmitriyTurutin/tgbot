@@ -41,4 +41,4 @@ async def callback_sales_last_month(callback_query: types.CallbackQuery):
     photo.name = 'sales_last_month.xlsx'
 
     await callback_query.bot.send_photo(chat_id=callback_query.message.chat.id, photo=photo, caption=reply_string,
-                         reply_markup=keyboard, parse_mode="Markdown")
+                                        reply_markup=keyboard, parse_mode="Markdown")
