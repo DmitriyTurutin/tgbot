@@ -1,5 +1,5 @@
 import logging
-
+import os
 from aiogram import Bot, Dispatcher, executor
 from config import Config
 from register_handlers import register_handlers
@@ -12,7 +12,7 @@ logging.basicConfig(level=logging.INFO)
 
 # Initialize bot
 storage = MemoryStorage()
-TOKEN = '5612271701:AAG1wFM9vnGRBvGnHMXxctaPECVNHBU2cWM'
+TOKEN = os.environ['BOT_TOKEN']
 bot = Bot(token=TOKEN)
 
 dp = Dispatcher(bot, storage=storage)

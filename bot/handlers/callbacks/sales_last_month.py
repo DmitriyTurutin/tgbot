@@ -1,7 +1,7 @@
 from aiogram import types
-from utils.api_requests import fetch_sales_last_month
+from utils.api_requests import fetch_sales_last_month, get_barplot
 from io import BytesIO
-import requests
+from utils.date_convertion import convert_date
 
 
 async def callback_sales_last_month(callback_query: types.CallbackQuery):
@@ -9,10 +9,14 @@ async def callback_sales_last_month(callback_query: types.CallbackQuery):
     btn_excel = types.InlineKeyboardButton(
         text="В excel", callback_data="to_excel"
     )
+    btn_back = types.InlineKeyboardButton(
+        text="<< Вернуться назад", callback_data="menu"
+    )
 
+    keyboard.add(btn_back)
     keyboard.add(btn_excel)
 
-    data = fetch_sales_last_month()
+    data = await fetch_sales_last_month()
     formatted_data = []
 
     for item in data:
@@ -21,7 +25,7 @@ async def callback_sales_last_month(callback_query: types.CallbackQuery):
         quantity = item[2]
         payment_method = item[3]
         customer = item[4]
-        date = item[5]
+        date = convert_date(item[5])
 
         formatted_item = f"*Товар:* {name},\n*Цена:* {price},\n*Кол-во:* {quantity},\n*Метод оплаты:* {payment_method},\n*Клиент:* {customer},\n*Дата:* {date}"
         if len(formatted_data) < 6:
@@ -35,10 +39,5 @@ async def callback_sales_last_month(callback_query: types.CallbackQuery):
             reply_string = "Пусто!"
             btn_excel = None
 
-    response = requests.get("http://localhost:8000/download/sales.png")
-
-    photo = BytesIO(response.content)
-    photo.name = 'sales_last_month.xlsx'
-
-    await callback_query.bot.send_photo(chat_id=callback_query.message.chat.id, photo=photo, caption=reply_string,
+    await callback_query.message.answer_photo(photo=await get_barplot(), caption=reply_string,
                                         reply_markup=keyboard, parse_mode="Markdown")
